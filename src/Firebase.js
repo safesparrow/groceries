@@ -1,14 +1,20 @@
-﻿import * as firebase from 'firebase'
+﻿import firebase from 'firebase/app'
+import database from 'firebase/database'
+// import * as firebase from '@firebase/testing'
 
 const firebaseConfig = {
     apiKey: "AIzaSyBXcQj3MO6xXtMA3-sbT59n7i4Gdk_lx7o",
     authDomain: "groceries-toolkit.firebaseapp.com",
     databaseURL: "https://groceries-toolkit.firebaseio.com",
+    //databaseURL: "http://localhost:5000",
     projectId: "groceries-toolkit",
     storageBucket: "groceries-toolkit.appspot.com",
     messagingSenderId: "729857865421",
     appId: "1:729857865421:web:bafdff6494d36bba5ddb84"
 };
-firebase.initializeApp(firebaseConfig)
-export const db = firebase.database()
-export const productsRef = db.ref('products')
+let db2;
+    firebase.initializeApp(firebaseConfig)
+    db2 = firebase.database()
+    db2.useEmulator("localhost", 9000);
+export const db = db2;
+export const productsRef = db.ref('products');
