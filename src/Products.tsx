@@ -1,5 +1,4 @@
-﻿import {grams, Measure} from "safe-units";
-import {useObjectVal} from "react-firebase-hooks/database";
+﻿import {useObjectVal} from "react-firebase-hooks/database";
 import {productsRef} from "./Firebase";
 import React, {FormEvent, useState} from "react";
 import {Button, Col, Form, Spinner, Table} from "react-bootstrap";
@@ -28,8 +27,6 @@ interface IRecipe {
 }
 
 export function ProductsManager() {
-    let x = Measure.of(30, grams)
-
     const [_products, loading, error]: [IProduct[] | undefined, boolean, any] = useObjectVal<IProduct[] | undefined>(productsRef);
     
     const products = _products || []
