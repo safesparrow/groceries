@@ -1,7 +1,8 @@
 import React, {FormEvent, useState} from 'react'
+import {BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
-import {Button, Col, Form, Spinner, Table, Tabs} from 'react-bootstrap'
+import {Button, Col, Form, Nav, Spinner, Table, Tabs} from 'react-bootstrap'
 import Tab from "react-bootstrap/Tab";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {ProductsManager, IProduct} from "./Products";
@@ -30,9 +31,9 @@ function RecipeForm(props: { onSubmit: (r: SimpleRecipe) => void }) {
         setContent(e.target.value)
         e.preventDefault()
     }
-    
-    function handleSubmit(e: FormEvent){
-        const recipe : SimpleRecipe = {
+
+    function handleSubmit(e: FormEvent) {
+        const recipe: SimpleRecipe = {
             id: "",
             title: title,
             recipe: content
@@ -40,8 +41,8 @@ function RecipeForm(props: { onSubmit: (r: SimpleRecipe) => void }) {
         props.onSubmit(recipe)
         e.preventDefault()
     }
-    
-    return <Form onSubmit={handleSubmit}> 
+
+    return <Form onSubmit={handleSubmit}>
         <Form.Row>
             <Col xs='auto'>
                 <Form.Control type='text' placeholder='Title' value={title} onChange={handleTitle}/>
@@ -64,8 +65,8 @@ function Recipies() {
 
     const [_recipes, loading, _]: [SimpleRecipe[] | undefined, boolean, unknown] = useListVals<SimpleRecipe>(recipesRef);
     const recipes = _recipes || []
-    
-    function onAdd(recipe : SimpleRecipe) {
+
+    function onAdd(recipe: SimpleRecipe) {
         let ref = recipesRef.push()
         recipe.id = ref.key!
         ref.set(recipe).then(() => {
@@ -97,16 +98,36 @@ function Recipies() {
 
 function App() {
     return (
-        <div>
-            <Tabs>
-                <Tab eventKey='recipies' title='Recipies'>
-                    <Recipies/>
-                </Tab>
-                <Tab eventKey='products' title='Products'>
-                    <ProductsManager/>
-                </Tab>
-            </Tabs>
-        </div>
+        <BrowserRouter>
+            <Nav
+                // activeKey="recipes"
+                // onSelect={(selectedKey) => alert(`selected ${selectedKey}`)}
+            >
+                <Nav.Item>
+                    <Nav.Link as={Link} eventKey='active' to="/">Home</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                    <Nav.Link as={Link} eventKey="recipes" to='/recipes'>Recipes</Nav.Link>
+                </Nav.Item>
+            </Nav>
+            <div>
+                <Switch>
+                    <Route path='/' exact>
+                        <Tabs>
+                            <Tab eventKey='recipies' title='Recipies'>
+                                <Recipies/>
+                            </Tab>
+                            <Tab eventKey='products' title='Products'>
+                                <ProductsManager/>
+                            </Tab>
+                        </Tabs>
+                    </Route>
+                    <Route path='/recipes'>
+                        <Recipies/>
+                    </Route>
+                </Switch>
+            </div>
+        </BrowserRouter>
     );
 }
 
