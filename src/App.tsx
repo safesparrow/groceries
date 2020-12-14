@@ -1,5 +1,5 @@
 import React, {FormEvent, useState} from 'react'
-import {Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
+import {useHistory, Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
 import {Button, Col, Form, Nav, Spinner, Table, Tabs} from 'react-bootstrap'
@@ -61,18 +61,39 @@ function RecipeForm(props: { onSubmit: (r: SimpleRecipe) => void }) {
     </Form>;
 }
 
+function RecipePlain(props: { recipe: SimpleRecipe }) {
+    const {recipe} = props;
+    return <div>
+        Recipe {recipe.title}
+    </div>
+}
+
+function Recipe(props: { recipes: Record<string, SimpleRecipe> }) {
+    const {recipeId} = useParams<{recipeId: string}>();
+    const recipe = props.recipes[recipeId];
+    return <div>
+        {recipe
+            ? <div>
+                <RecipePlain recipe={recipe} />
+            </div>
+            : <>No recipe with that id found</>
+        }
+    </div>
+}
+
 function Recipies() {
 
     const [_recipes, loading, _]: [Record<string, SimpleRecipe> | undefined, boolean, unknown] = useObjectVal<Record<string, SimpleRecipe>>(recipesRef);
-    const recipes = _recipes || []
+    const recipes = _recipes || {}
     
     const { url, path } = useRouteMatch();
+    const history = useHistory();
     
     function onAdd(recipe: SimpleRecipe) {
         let ref = recipesRef.push()
         recipe.id = ref.key!
         ref.set(recipe).then(() => {
-            // setName('');
+            history.push(`${url}`)
         })
     }
 
@@ -82,7 +103,7 @@ function Recipies() {
     console.log(url, path)
 
     return <Switch>
-        <Route path={`${path}/`} exact>
+        <Route path={`${path}`} exact>
             <Link to={`${url}/new`}><Button variant={'outline-info'}>Add a recipe</Button></Link>
             {loading ? <Spinner animation='border'/>
                 :
@@ -90,7 +111,7 @@ function Recipies() {
                     <tbody>
                     {Object.entries(recipes).map(([k,p]) =>
                         <tr key={p.id}>
-                            <td>{p.title}</td>
+                            <td><Link to={`${url}/${p.id}`}>{p.title}</Link></td>
                             <td><Button  variant='outline-warning' onClick={() => handleRemove(p)}>Remove</Button></td>
                         </tr>
                     )}
@@ -100,6 +121,9 @@ function Recipies() {
         </Route>
         <Route path={`${path}/new`} exact>
             <RecipeForm onSubmit={onAdd}/>
+        </Route>
+        <Route path={`${path}/:recipeId`}>
+            <Recipe recipes={recipes}></Recipe>
         </Route>
     </Switch>
 }
