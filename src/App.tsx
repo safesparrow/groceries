@@ -1,4 +1,4 @@
-import React, {ChangeEvent, FormEvent, useState} from 'react'
+import React, {ChangeEvent, FormEvent, useEffect, useState} from 'react'
 import {useHistory, Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
@@ -18,9 +18,10 @@ interface SimpleRecipe {
     recipe: string
 }
 
-function RecipeForm(props: { onSubmit: (r: SimpleRecipe) => void }) {
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
+function RecipeForm(props: { recipe : SimpleRecipe | null, onSubmit: (r: SimpleRecipe) => void }) {
+    const {recipe} = props;
+    const [title, setTitle] = useState(recipe ? recipe.title : '');
+    const [content, setContent] = useState(recipe ? recipe.recipe : '');
 
     function handleTitle(e: any) {
         setTitle(e.target.value)
@@ -33,13 +34,13 @@ function RecipeForm(props: { onSubmit: (r: SimpleRecipe) => void }) {
     }
 
     function handleSubmit(e: FormEvent) {
-        const recipe: SimpleRecipe = {
-            id: "",
+        const r: SimpleRecipe = {
+            id: recipe ? recipe.id : '',
             title: title,
             recipe: content
         }
-        props.onSubmit(recipe)
         e.preventDefault()
+        props.onSubmit(r)
     }
 
     return <Form onSubmit={handleSubmit}>
@@ -69,14 +70,26 @@ function RecipePlain(props: { recipe: SimpleRecipe }) {
     </div>
 }
 
-function Recipe(props: { recipes: Record<string, SimpleRecipe> }) {
+function Recipe(props: { onEdit:(r: SimpleRecipe, clb: () => void) => void, recipes: Record<string, SimpleRecipe> }) {
     const {recipeId} = useParams<{ recipeId: string }>();
+    const [isEdit, setIsEdit] = useState(false);
     const recipe = props.recipes[recipeId];
     return <div>
         {recipe
-            ? <div>
-                <RecipePlain recipe={recipe}/>
-            </div>
+            ?
+            <>
+            {!isEdit && <Button onClick={() => setIsEdit(true)}>Edit</Button>}
+                {isEdit
+                    ? <div>
+                        <Button onClick={() => setIsEdit(false)} variant='outline-warning'>Discard changes</Button>
+                        <RecipeForm recipe={recipe} onSubmit={r => props.onEdit(r, () => setIsEdit(false))} />
+                    </div>
+                    :
+                    <div>
+                        <RecipePlain recipe={recipe}/>
+                    </div>
+                }
+            </>
             : <>No recipe with that id found</>
         }
     </div>
@@ -106,6 +119,11 @@ function Recipies() {
     function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
         setSearch(e.currentTarget.value)
     }
+    
+    function handleOnEdit(r : SimpleRecipe, clb : () => void){
+        //const {id, ...recipeDto} = r;
+        recipesRef.child(r.id).set(r).then(() => clb());
+    }
 
     return <Switch>
         <Route path={`${path}`} exact>
@@ -126,10 +144,10 @@ function Recipies() {
             }
         </Route>
         <Route path={`${path}/new`} exact>
-            <RecipeForm onSubmit={onAdd}/>
+            <RecipeForm recipe={null} onSubmit={onAdd}/>
         </Route>
         <Route path={`${path}/:recipeId`}>
-            <Recipe recipes={recipes}/>
+            <Recipe onEdit={handleOnEdit} recipes={recipes}/>
         </Route>
     </Switch>
 }
