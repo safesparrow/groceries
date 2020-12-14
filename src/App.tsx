@@ -1,4 +1,4 @@
-import React, {FormEvent, useState} from 'react'
+import React, {ChangeEvent, FormEvent, useState} from 'react'
 import {useHistory, Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
@@ -64,17 +64,18 @@ function RecipeForm(props: { onSubmit: (r: SimpleRecipe) => void }) {
 function RecipePlain(props: { recipe: SimpleRecipe }) {
     const {recipe} = props;
     return <div>
-        Recipe {recipe.title}
+        <h2>{recipe.title}</h2>
+        <div>{recipe.recipe}</div>
     </div>
 }
 
 function Recipe(props: { recipes: Record<string, SimpleRecipe> }) {
-    const {recipeId} = useParams<{recipeId: string}>();
+    const {recipeId} = useParams<{ recipeId: string }>();
     const recipe = props.recipes[recipeId];
     return <div>
         {recipe
             ? <div>
-                <RecipePlain recipe={recipe} />
+                <RecipePlain recipe={recipe}/>
             </div>
             : <>No recipe with that id found</>
         }
@@ -85,10 +86,11 @@ function Recipies() {
 
     const [_recipes, loading, _]: [Record<string, SimpleRecipe> | undefined, boolean, unknown] = useObjectVal<Record<string, SimpleRecipe>>(recipesRef);
     const recipes = _recipes || {}
-    
-    const { url, path } = useRouteMatch();
+    const [search, setSearch] = useState('');
+
+    const {url, path} = useRouteMatch();
     const history = useHistory();
-    
+
     function onAdd(recipe: SimpleRecipe) {
         let ref = recipesRef.push()
         recipe.id = ref.key!
@@ -100,19 +102,23 @@ function Recipies() {
     function handleRemove(toRemove: SimpleRecipe) {
         recipesRef.child(toRemove.id).remove()
     }
-    console.log(url, path)
+
+    function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
+        setSearch(e.currentTarget.value)
+    }
 
     return <Switch>
         <Route path={`${path}`} exact>
             <Link to={`${url}/new`}><Button variant={'outline-info'}>Add a recipe</Button></Link>
+            <Form.Control type='text' placeholder='Search' onChange={handleSearchChange}/>
             {loading ? <Spinner animation='border'/>
                 :
                 <Table striped bordered hover>
                     <tbody>
-                    {Object.entries(recipes).map(([k,p]) =>
+                    {Object.entries(recipes).filter(([k, p]) => p.title.includes(search)).map(([k, p]) =>
                         <tr key={p.id}>
                             <td><Link to={`${url}/${p.id}`}>{p.title}</Link></td>
-                            <td><Button  variant='outline-warning' onClick={() => handleRemove(p)}>Remove</Button></td>
+                            <td><Button variant='outline-warning' onClick={() => handleRemove(p)}>Remove</Button></td>
                         </tr>
                     )}
                     </tbody>
@@ -123,7 +129,7 @@ function Recipies() {
             <RecipeForm onSubmit={onAdd}/>
         </Route>
         <Route path={`${path}/:recipeId`}>
-            <Recipe recipes={recipes}></Recipe>
+            <Recipe recipes={recipes}/>
         </Route>
     </Switch>
 }
@@ -131,10 +137,7 @@ function Recipies() {
 function App() {
     return (
         <BrowserRouter>
-            <Nav
-                // activeKey="recipes"
-                // onSelect={(selectedKey) => alert(`selected ${selectedKey}`)}
-            >
+            <Nav>
                 <Nav.Item>
                     <Nav.Link as={Link} eventKey="recipes" to='/recipes'>Recipes</Nav.Link>
                 </Nav.Item>
@@ -144,9 +147,9 @@ function App() {
             </Nav>
             <div>
                 <Switch>
-                    <Route path='/products'><ProductsManager /></Route>
+                    <Route path='/products'><ProductsManager/></Route>
                     <Route path={['/recipes']}><Recipies/></Route>
-                    <Redirect to={{pathname: '/recipes'}} />
+                    <Redirect to={{pathname: '/recipes'}}/>
                 </Switch>
             </div>
         </BrowserRouter>
