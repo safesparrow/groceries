@@ -44,21 +44,15 @@ function RecipeForm(props: { recipe : SimpleRecipe | null, onSubmit: (r: SimpleR
     }
 
     return <Form onSubmit={handleSubmit}>
-        <Form.Row>
-            <Col xs='auto'>
+        <Form.Group>
                 <Form.Control type='text' placeholder='Title' value={title} onChange={handleTitle}/>
-            </Col>
-        </Form.Row>
-        <Form.Row>
-            <Col xs='auto'>
-                <Form.Control type='textarea' value={content} onChange={handleContent}/>
-            </Col>
-        </Form.Row>
-        <Form.Row>
-            <Col xs='auto'>
-                <Button variant='primary' type='submit'>Save</Button>
-            </Col>
-        </Form.Row>
+        </Form.Group>
+        <Form.Group>
+                <Form.Control as='textarea' rows={20} value={content} onChange={handleContent}/>
+        </Form.Group>
+        <Form.Group>
+            <Button variant='primary' type='submit'>Save</Button>
+        </Form.Group>
     </Form>;
 }
 
@@ -95,6 +89,12 @@ function Recipe(props: { onEdit:(r: SimpleRecipe, clb: () => void) => void, reci
     </div>
 }
 
+function getHighlightedText(text : string, highlight : string) {
+    // Split on highlight term and include term into parts, ignore case
+    const parts = highlight.trim() == '' ? [text] : text.split(new RegExp(`(${highlight})`, 'gi'));
+    return <span> { parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? <mark>{part}</mark> : <span>{part}</span>) } </span>;
+}
+
 function Recipies() {
 
     const [_recipes, loading, _]: [Record<string, SimpleRecipe> | undefined, boolean, unknown] = useObjectVal<Record<string, SimpleRecipe>>(recipesRef);
@@ -117,7 +117,7 @@ function Recipies() {
     }
 
     function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
-        setSearch(e.currentTarget.value)
+        setSearch(e.currentTarget.value.trim())
     }
     
     function handleOnEdit(r : SimpleRecipe, clb : () => void){
@@ -133,9 +133,9 @@ function Recipies() {
                 :
                 <Table striped bordered hover>
                     <tbody>
-                    {Object.entries(recipes).filter(([k, p]) => p.title.includes(search)).map(([k, p]) =>
+                    {Object.entries(recipes).filter(([k, p]) => p.title.toLowerCase().includes(search.toLowerCase())).map(([k, p]) =>
                         <tr key={p.id}>
-                            <td><Link to={`${url}/${p.id}`}>{p.title}</Link></td>
+                            <td><Link to={`${url}/${p.id}`}>{getHighlightedText(p.title, search)}</Link></td>
                             <td><Button variant='outline-warning' onClick={() => handleRemove(p)}>Remove</Button></td>
                         </tr>
                     )}
