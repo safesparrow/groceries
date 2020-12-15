@@ -50,6 +50,7 @@ export function ProductsManager() {
     }
 
     return <>
+        <h2>Note: This page is very much WIP</h2>
         {error}
         {loading ? <Spinner animation='border'/>
             :

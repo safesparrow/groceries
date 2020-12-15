@@ -1,5 +1,19 @@
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+# Groceries app
+This is a web app that aims to help with household's groceries and all related activities.
+Example feature include:
+* a searchable book of recipes
+* a record of recipes/meals prepared and ones planned for the upcoming days
+* grocery management - keeping track of grocery items bought, their Best Before date etc
+* import grocery orders made through Tesco Online into the app
+* help with grocery shopping, based on the items already available in the household and planned meals 
+* help keep track of one's diet
+
+## Architecture
+The app is a web app written in Typescript and React and react-bootstrap.
+It uses Firestore Realtime Database as backend
+
 ## Running locally
 
 ### Setting up a local Firestore Realtime DB
@@ -18,3 +32,9 @@ firebase emulators:start
 yarn install # first time only
 yarn start
 ```
+
+## Current state
+* The app supports basic CRUD operations for managing recipes
+* The app is ugly :)
+* It is hardcoded to work with a local instance of Firestore
+* It doesn't have any tests
