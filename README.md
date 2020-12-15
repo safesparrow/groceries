@@ -1,5 +1,3 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-
 # Groceries app
 This is a web app that aims to help with household's groceries and all related activities.
 Example feature include:
