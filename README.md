@@ -32,7 +32,7 @@ yarn start
 ```
 
 ## Current state
-* The app supports basic CRUD operations for managing recipes
+* The app supports basic CRUD operations for managing recipes only
 * The app is ugly :)
 * Anonymous access is allowed, there is no user-specific data stored
 * It is hardcoded to work with a local instance of Firestore
