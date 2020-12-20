@@ -2,7 +2,7 @@ import React, {ChangeEvent, FormEvent, useEffect, useState} from 'react'
 import {useHistory, Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
-import {Button, Col, Form, Nav, Spinner, Table, Tabs} from 'react-bootstrap'
+import {Button, Col, Form, InputGroup, Nav, Row, Spinner, Table, Tabs, ToggleButton} from 'react-bootstrap'
 import Tab from "react-bootstrap/Tab";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {ProductsManager, IProduct} from "./Products";
@@ -16,9 +16,10 @@ interface SimpleRecipe {
     id: string
     title: string
     recipe: string
+    isPlanned: boolean
 }
 
-function RecipeForm(props: { recipe : SimpleRecipe | null, onSubmit: (r: SimpleRecipe) => void }) {
+function RecipeForm(props: { recipe: SimpleRecipe | null, onSubmit: (r: SimpleRecipe) => void }) {
     const {recipe} = props;
     const [title, setTitle] = useState(recipe ? recipe.title : '');
     const [content, setContent] = useState(recipe ? recipe.recipe : '');
@@ -37,7 +38,8 @@ function RecipeForm(props: { recipe : SimpleRecipe | null, onSubmit: (r: SimpleR
         const r: SimpleRecipe = {
             id: recipe ? recipe.id : '',
             title: title,
-            recipe: content
+            recipe: content,
+            isPlanned: recipe ? recipe.isPlanned : false
         }
         e.preventDefault()
         props.onSubmit(r)
@@ -45,10 +47,10 @@ function RecipeForm(props: { recipe : SimpleRecipe | null, onSubmit: (r: SimpleR
 
     return <Form onSubmit={handleSubmit}>
         <Form.Group>
-                <Form.Control type='text' placeholder='Title' value={title} onChange={handleTitle}/>
+            <Form.Control type='text' placeholder='Title' value={title} onChange={handleTitle}/>
         </Form.Group>
         <Form.Group>
-                <Form.Control as='textarea' rows={20} value={content} onChange={handleContent}/>
+            <Form.Control as='textarea' rows={20} value={content} onChange={handleContent}/>
         </Form.Group>
         <Form.Group>
             <Button variant='primary' type='submit'>Save</Button>
@@ -64,7 +66,7 @@ function RecipePlain(props: { recipe: SimpleRecipe }) {
     </div>
 }
 
-function Recipe(props: { onEdit:(r: SimpleRecipe, clb: () => void) => void, recipes: Record<string, SimpleRecipe> }) {
+function Recipe(props: { onEdit: (r: SimpleRecipe, clb: () => void) => void, recipes: Record<string, SimpleRecipe> }) {
     const {recipeId} = useParams<{ recipeId: string }>();
     const [isEdit, setIsEdit] = useState(false);
     const recipe = props.recipes[recipeId];
@@ -72,11 +74,11 @@ function Recipe(props: { onEdit:(r: SimpleRecipe, clb: () => void) => void, reci
         {recipe
             ?
             <>
-            {!isEdit && <Button onClick={() => setIsEdit(true)}>Edit</Button>}
+                {!isEdit && <Button onClick={() => setIsEdit(true)}>Edit</Button>}
                 {isEdit
                     ? <div>
                         <Button onClick={() => setIsEdit(false)} variant='outline-warning'>Discard changes</Button>
-                        <RecipeForm recipe={recipe} onSubmit={r => props.onEdit(r, () => setIsEdit(false))} />
+                        <RecipeForm recipe={recipe} onSubmit={r => props.onEdit(r, () => setIsEdit(false))}/>
                     </div>
                     :
                     <div>
@@ -89,10 +91,11 @@ function Recipe(props: { onEdit:(r: SimpleRecipe, clb: () => void) => void, reci
     </div>
 }
 
-function getHighlightedText(text : string, highlight : string) {
+function getHighlightedText(text: string, highlight: string) {
     // Split on highlight term and include term into parts, ignore case
     const parts = highlight.trim() == '' ? [text] : text.split(new RegExp(`(${highlight})`, 'gi'));
-    return <span> { parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? <mark>{part}</mark> : <span>{part}</span>) } </span>;
+    return <span> {parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? <mark>{part}</mark> :
+        <span>{part}</span>)} </span>;
 }
 
 function Recipies() {
@@ -119,28 +122,55 @@ function Recipies() {
     function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
         setSearch(e.currentTarget.value.trim())
     }
-    
-    function handleOnEdit(r : SimpleRecipe, clb : () => void){
-        //const {id, ...recipeDto} = r;
+
+    function handleOnEdit(r: SimpleRecipe, clb: () => void) {
         recipesRef.child(r.id).set(r).then(() => clb());
+    }
+
+    function handleSearchClear() {
+        setSearch('');
+    }
+
+    function changePlanned(recipe: SimpleRecipe) {
+        recipesRef.child(recipe.id).set({...recipe, isPlanned: !recipe.isPlanned})
+    }
+
+    function RecipesTable(props: { recipes: Record<string, SimpleRecipe> }) {
+        const filtered = Object.values(recipes)
+            .filter(r => r.title.toLowerCase().includes(search.toLowerCase()));
+        filtered.sort((a, b) => {
+            if(a.isPlanned === b.isPlanned) return a.id.localeCompare(b.id);
+            return a.isPlanned ? -1 : 1;
+        });
+        return <Table striped bordered hover>
+            <tbody>
+            {filtered
+                .map(recipe =>
+                    <tr key={recipe.id} >
+                        <td>
+                            <Link to={`${url}/${recipe.id}`}>{getHighlightedText(recipe.title, search)}</Link>
+                        </td>
+                        <td>
+                            <Form.Check type='checkbox' label='Planned' checked={recipe.isPlanned} onChange={() => changePlanned(recipe)}/>
+                        </td>
+                        <td><Button variant='outline-warning' onClick={() => handleRemove(recipe)}>Remove</Button></td>
+                    </tr>)
+            }</tbody>
+        </Table>
     }
 
     return <Switch>
         <Route path={`${path}`} exact>
             <Link to={`${url}/new`}><Button variant={'outline-info'}>Add a recipe</Button></Link>
-            <Form.Control type='text' placeholder='Search' onChange={handleSearchChange}/>
+            <InputGroup>
+                <InputGroup.Prepend>
+                    <Button variant='outline-secondary' onClick={handleSearchClear}>x</Button>
+                </InputGroup.Prepend>
+                <Form.Control type='text' placeholder='Search' onChange={handleSearchChange} value={search}/>
+            </InputGroup>
             {loading ? <Spinner animation='border'/>
                 :
-                <Table striped bordered hover>
-                    <tbody>
-                    {Object.entries(recipes).filter(([k, p]) => p.title.toLowerCase().includes(search.toLowerCase())).map(([k, p]) =>
-                        <tr key={p.id}>
-                            <td><Link to={`${url}/${p.id}`}>{getHighlightedText(p.title, search)}</Link></td>
-                            <td><Button variant='outline-warning' onClick={() => handleRemove(p)}>Remove</Button></td>
-                        </tr>
-                    )}
-                    </tbody>
-                </Table>
+                <RecipesTable recipes={recipes}/>
             }
         </Route>
         <Route path={`${path}/new`} exact>
