@@ -20,6 +20,7 @@ if(!firebase.apps.length) {
 }
 db2 = firebase.database()
 export const db = db2;
+export const rootRef = db.ref();
 export const productsRef = db.ref('products');
-export const recipesRef = db.ref('recipies');
+export const recipesRef = db.ref('recipes');
 export const plansRef = db.ref('plans');

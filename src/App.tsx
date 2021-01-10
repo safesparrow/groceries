@@ -1,4 +1,4 @@
-import React, {ChangeEvent, FormEvent, useEffect, useState} from 'react'
+import React, {ChangeEvent, FormEvent, useEffect, useRef, useState} from 'react'
 import {useHistory, Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
@@ -7,8 +7,12 @@ import Tab from "react-bootstrap/Tab";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {ProductsManager, IProduct} from "./Products";
 import {useListVals, useObjectVal} from "react-firebase-hooks/database";
-import {plansRef, productsRef, recipesRef} from "./Firebase";
-import { addDays, format, compareAsc } from 'date-fns'
+import {plansRef, productsRef, recipesRef, rootRef} from "./Firebase";
+import {addDays, format, compareAsc, isSameDay} from 'date-fns'
+import _ from "lodash";
+import {DndProvider} from 'react-dnd'
+import {useDrag, useDrop} from "react-dnd";
+import {HTML5Backend} from "react-dnd-html5-backend";
 
 /**
  * Basic info about a recipe
@@ -35,7 +39,10 @@ function addRecipe(recipe: SimpleRecipe) {
 }
 
 const dayFormat = 'yyyy-MM-dd';
-function toDayFormat(date : Date){ return format(date, dayFormat); }
+
+function toDayFormat(date: Date) {
+    return format(date, dayFormat);
+}
 
 function addPlan(plan: Plan) {
     let ref = plansRef.push()
@@ -68,14 +75,14 @@ async function resetTestData() {
             recipe: 'Pieczemy w piekarniku',
             isPlanned: false
         }
+    await plansRef.set({});
     await recipesRef.set({});
+    await productsRef.set({});
     const recipes = [salad, chicken, pizza];
     for (const r of recipes)
         await addRecipe(r);
-    
-    await productsRef.set({});
-    
-    await plansRef.set({});
+
+
     const today = new Date()
     const plans: Plan[] = [
         {
@@ -97,7 +104,7 @@ async function resetTestData() {
             dayOrder: 2
         }
     ]
-    for(const p of plans)
+    for (const p of plans)
         await addPlan(p);
 }
 
@@ -220,17 +227,114 @@ function RecipesTable(props: { baseUrl: string, changePlanned: any, handleRemove
     </Table>
 }
 
+/*
+ <h2>Meal plans</h2>
+        <Table striped bordered hover>
+            <thead>
+            <th>Day</th>
+            <th>Recipe</th>
+            </thead>
+            <tbody>
+            {sorted.map(plan => {
+                const recipe = recipes[plan.recipeId];
+                const date = Date.parse(plan.date);
+                const day = format(date, 'EEEE, do')
+                const sameAsPrevious = plan.date == lastDay;
+                lastDay = plan.date;
+                return <tr>
+                    {sameAsPrevious ? <></> : <td rowSpan={sorted.filter(p => p.date == plan.date).length}>{day}</td>}
+                    <td><Link to={`recipes/${recipe.id}`}>{recipe.title}</Link></td>
+                </tr>;
+            })}
+            </tbody>
+        </Table>
+ */
+
+function PlanUI(props: { plan: Plan, recipes: Record<string, SimpleRecipe> }) {
+    const ref = useRef(null); // Initialize the reference
+    const {plan, recipes} = props;
+    // useDrag will be responsible for making an element draggable. It also expose, isDragging method to add any styles while dragging
+    const [collectedProps, drag] = useDrag({
+        // item denotes the element type, unique identifier (id) and the index (position)
+        item: {type: 'plan', id: plan.id},
+        // // collect method is like an event listener, it monitors whether the element is dragged and expose that information
+        // collect: monitor => ({
+        //     isDragging: monitor.isDragging()
+        // })
+    });
+    drag(ref);
+    const recipe = recipes[plan.recipeId];
+    return <div ref={ref}>
+        <Link to={`recipes/${recipe.id}`}>{recipe.title}</Link><br/>
+    </div>
+}
+
+
+function DayPlans(props: { onDrop: (p: any) => void, date: Date, i: number, plans: Plan[], recipes: Record<string, SimpleRecipe> }) {
+    const ref = useRef(null);
+    const [collectedProps, drop] = useDrop({
+        accept: 'plan',
+        drop: props.onDrop
+    });
+    drop(ref);
+    return <td ref={ref} style={{height: '100%'}}>
+        {_.sortBy(props.plans, [p => p.dayOrder]).map(plan => <PlanUI recipes={props.recipes} plan={plan}/>)}
+    </td>;
+}
+
+function Plans(props: { plans: Record<string, Plan>, recipes: Record<string, SimpleRecipe> }) {
+    const {plans, recipes} = props;
+    const sorted = _.sortBy(Object.values(plans), [p => p.date, p => p.dayOrder]);
+    const today = new Date();
+    const indexes = Array.from({length: 7}, (x, i) => i - 1);
+    const plansByDate = _.groupBy(sorted, p => p.date);
+
+    function handleDrop(item: any, date: Date) {
+        const planId = item.id
+        const plan = plans[planId]
+        let movedDate = toDayFormat(date);
+        const movedPlan : Plan = {
+            ...plan,
+            date: movedDate
+        };
+        plansRef.child(planId).set(movedPlan)
+    }
+
+    return <>
+        <h2>Meal schedule</h2>
+        <DndProvider backend={HTML5Backend}>
+            <Table striped bordered hover>
+                <thead>
+                {indexes.map(i => {
+                    const date = addDays(today, i);
+                    const day = format(date, 'EEEE, do')
+                    return <th>{day}</th>
+                })}
+                </thead>
+                <tbody>
+                <tr>
+                    {indexes.map(i => {
+                        const date = addDays(today, i);
+                        const s = toDayFormat(date);
+                        const dayPlans = plansByDate[s] || []
+                        return <DayPlans onDrop={item => handleDrop(item, date)} date={date} i={i} plans={dayPlans} recipes={recipes}/>;
+                    })}
+                </tr>
+                </tbody>
+            </Table>
+        </DndProvider>
+    </>
+}
+
 function Recipies() {
-
-    const [_recipes, loadingRecipes, _]: [Record<string, SimpleRecipe> | undefined, boolean, unknown] = useObjectVal<Record<string, SimpleRecipe>>(recipesRef);
-    const [_plans, loadingPlans, __]: [Record<string, Plan> | undefined, boolean, unknown] = useObjectVal<Record<string, Plan>>(plansRef);
-    const loading = loadingRecipes || loadingPlans;
-    const recipes = _recipes || {};
-    const plans = _plans || {};
+    const [_all, loading, ___]: [{ recipes: Record<string, SimpleRecipe>, plans: Record<string, Plan> } | undefined, boolean, unknown] = useObjectVal(rootRef);
     const [search, setSearch] = useState('');
-
     const {url, path} = useRouteMatch();
     const history = useHistory();
+    if (loading) return <Spinner animation='border'/>;
+    const all = _all || {recipes: {}, plans: {}};
+    const recipes = all.recipes || {};
+    const plans = all.plans || {};
 
     function onAdd(recipe: SimpleRecipe) {
         addRecipe(recipe).then(() => {
@@ -258,31 +362,29 @@ function Recipies() {
         recipesRef.child(recipe.id).set({...recipe, isPlanned: !recipe.isPlanned})
     }
 
-    return loading ?
-        <Spinner animation='border'/>
-        :
-        <Switch>
-            <Route path={`${path}`} exact>
-                <Link to={`${url}/new`}><Button variant={'outline-info'}>Add a recipe</Button></Link>
-                <InputGroup>
-                    <InputGroup.Prepend>
-                        <Button variant='outline-secondary' onClick={handleSearchClear}>x</Button>
-                    </InputGroup.Prepend>
-                    <Form.Control type='text' placeholder='Search' onChange={handleSearchChange} value={search}/>
-                </InputGroup>
-                <>
-                    {/*<PlannedRecipes recipes={recipes.filter(r => r.ispl)} />*/}
-                    <RecipesTable changePlanned={changePlanned} handleRemove={handleRemove} baseUrl={url} search={search}
-                                  recipes={recipes}/>
-                </>
-            </Route>
-            <Route path={`${path}/new`} exact>
-                <RecipeForm recipe={null} onSubmit={onAdd}/>
-            </Route>
-            <Route path={`${path}/:recipeId`}>
-                <Recipe onEdit={handleOnEdit} recipes={recipes}/>
-            </Route>
-        </Switch>
+    return <Switch>
+        <Route path={`${path}`} exact>
+            <Plans plans={plans} recipes={recipes}/>
+            <Link to={`${url}/new`}><Button variant={'outline-info'}>Add a recipe</Button></Link>
+            <InputGroup>
+                <InputGroup.Prepend>
+                    <Button variant='outline-secondary' onClick={handleSearchClear}>x</Button>
+                </InputGroup.Prepend>
+                <Form.Control type='text' placeholder='Search' onChange={handleSearchChange} value={search}/>
+            </InputGroup>
+            <>
+                {/*<PlannedRecipes recipes={recipes.filter(r => r.ispl)} />*/}
+                <RecipesTable changePlanned={changePlanned} handleRemove={handleRemove} baseUrl={url} search={search}
+                              recipes={recipes}/>
+            </>
+        </Route>
+        <Route path={`${path}/new`} exact>
+            <RecipeForm recipe={null} onSubmit={onAdd}/>
+        </Route>
+        <Route path={`${path}/:recipeId`}>
+            <Recipe onEdit={handleOnEdit} recipes={recipes}/>
+        </Route>
+    </Switch>
 }
 
 function App() {
