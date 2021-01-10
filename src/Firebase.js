@@ -22,3 +22,4 @@ db2 = firebase.database()
 export const db = db2;
 export const productsRef = db.ref('products');
 export const recipesRef = db.ref('recipies');
+export const plansRef = db.ref('plans');
