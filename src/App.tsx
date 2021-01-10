@@ -297,7 +297,9 @@ function Plans(props: { plans: Record<string, Plan>, recipes: Record<string, Sim
             ...plan,
             date: movedDate
         };
-        plansRef.child(planId).set(movedPlan)
+        const dayPlans = [..._.sortBy(plansByDate[toDayFormat(date)], p => p.dayOrder), movedPlan];
+        const updates = Object.fromEntries(dayPlans.map((plan, i) => { return [plan.id, {...plan, dayOrder: i}]; }));
+        plansRef.update(updates);
     }
 
     return <>
