@@ -251,19 +251,19 @@ function RecipesTable(props: { baseUrl: string, handleRemove: any, search: strin
         </Table>
  */
 
-function PlanOverlay(props : {onRemove: () => void, plan : Plan, recipes : Record<string, SimpleRecipe>, rest: any}){
+function PlanOverlay(props: { onRemove: () => void, plan: Plan, recipes: Record<string, SimpleRecipe>, rest: any }) {
     const {plan, recipes, rest} = props;
     const recipe = recipes[plan.recipeId]
     const style = {...rest.style, minWidth: '200px'}
     return <Popover id='plan-overlay' {...rest} style={style}>
         <Popover.Title as='h3'>{recipe.title}</Popover.Title>
         <Popover.Content>
-            <X size={40} onClick={() => props.onRemove()} />
+            <X size={40} onClick={() => props.onRemove()}/>
         </Popover.Content>
     </Popover>
 }
 
-function F(props : any){
+function F(props: any) {
     return <Popover id='left' {...props} >
         <Popover.Title as="h3">{`Popover left`}</Popover.Title>
         <Popover.Content>
@@ -285,29 +285,26 @@ function PlanUI(props: { plan: Plan, recipes: Record<string, SimpleRecipe> }) {
         // })
     });
     drag(ref);
-    function handleRemove(plan : Plan){
+
+    function handleRemove(plan: Plan) {
         plansRef.child(plan.id).remove()
     }
+
     const recipe = recipes[plan.recipeId];
-    return <><OverlayTrigger
+    return <OverlayTrigger
         trigger='click'
-        overlay={props => {console.log(props); return <PlanOverlay onRemove={() => handleRemove(plan)} plan={plan} recipes={recipes} rest={props} />; }}
+        overlay={props => {
+            console.log(props);
+            return <PlanOverlay onRemove={() => handleRemove(plan)} plan={plan} recipes={recipes} rest={props}/>;
+        }}
         placement='bottom'
         rootClose={true}
         transition={false}
     >
-            <div ref={ref} style={{margin: '8px 0px', borderRadius: '.25em', border: '1px solid rgb(26, 189, 214)'}}>
+        <div ref={ref} style={{margin: '8px 0px', borderRadius: '.25em', border: '1px solid rgb(26, 189, 214)'}}>
             {recipe.title}
-            </div>
-        </OverlayTrigger>
-        <OverlayTrigger
-            trigger="click"
-            placement='left'
-            overlay={F}
-        >
-            <Button variant="secondary">Popover on left</Button>
-        </OverlayTrigger>
-        </>
+        </div>
+    </OverlayTrigger>
 }
 
 
