@@ -203,8 +203,8 @@ function Recipe(props: { onEdit: (r: SimpleRecipe, clb: () => void) => void, rec
 function getHighlightedText(text: string, highlight: string) {
     // Split on highlight term and include term into parts, ignore case
     const parts = highlight.trim() == '' ? [text] : text.split(new RegExp(`(${highlight})`, 'gi'));
-    return <span> {parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? <mark>{part}</mark> :
-        <span>{part}</span>)} </span>;
+    return <span> {parts.map((part, i) => part.toLowerCase() === highlight.toLowerCase() ? <mark key={i}>{part}</mark> :
+        <span key={i}>{part}</span>)} </span>;
 }
 
 function RecipesTable(props: { baseUrl: string, handleRemove: any, search: string, recipes: Record<string, SimpleRecipe> }) {
@@ -255,19 +255,10 @@ function PlanOverlay(props: { onRemove: () => void, plan: Plan, recipes: Record<
     const {plan, recipes, rest} = props;
     const recipe = recipes[plan.recipeId]
     const style = {...rest.style, minWidth: '200px'}
-    return <Popover id='plan-overlay' {...rest} style={style}>
+    return <Popover id={`plan-overlay${plan.id}`} {...rest} style={style}>
         <Popover.Title as='h3'>{recipe.title}</Popover.Title>
         <Popover.Content>
             <X size={40} onClick={() => props.onRemove()}/>
-        </Popover.Content>
-    </Popover>
-}
-
-function F(props: any) {
-    return <Popover id='left' {...props} >
-        <Popover.Title as="h3">{`Popover left`}</Popover.Title>
-        <Popover.Content>
-            <strong>Holy guacamole!</strong> Check this info.
         </Popover.Content>
     </Popover>
 }
@@ -287,21 +278,23 @@ function PlanUI(props: { plan: Plan, recipes: Record<string, SimpleRecipe> }) {
     drag(ref);
 
     function handleRemove(plan: Plan) {
+        setShowOverlay(false)
         plansRef.child(plan.id).remove()
     }
+
+    const [showOverlay, setShowOverlay] = useState(false);
 
     const recipe = recipes[plan.recipeId];
     return <OverlayTrigger
         trigger='click'
-        overlay={props => {
-            console.log(props);
-            return <PlanOverlay onRemove={() => handleRemove(plan)} plan={plan} recipes={recipes} rest={props}/>;
-        }}
+        overlay={props => <PlanOverlay onRemove={() => handleRemove(plan)} plan={plan} recipes={recipes} rest={props}/>}
         placement='bottom'
+        show={showOverlay}
         rootClose={true}
         transition={false}
     >
-        <div ref={ref} style={{margin: '8px 0px', borderRadius: '.25em', border: '1px solid rgb(26, 189, 214)'}}>
+        <div ref={ref} style={{margin: '8px 0px', borderRadius: '.25em', border: '1px solid rgb(26, 189, 214)'}}
+             onClick={() => setShowOverlay(!showOverlay)}>
             {recipe.title}
         </div>
     </OverlayTrigger>
@@ -316,7 +309,7 @@ function DayPlans(props: { onDrop: (p: any) => void, date: Date, i: number, plan
     });
     drop(ref);
     return <td ref={ref} style={{height: '100%', width: '14.28%'}}>
-        {_.sortBy(props.plans, [p => p.dayOrder]).map(plan => <PlanUI recipes={props.recipes} plan={plan}/>)}
+        {_.sortBy(props.plans, [p => p.dayOrder]).map(plan => <PlanUI key={plan.id} recipes={props.recipes} plan={plan}/>)}
     </td>;
 }
 
@@ -347,11 +340,13 @@ function Plans(props: { plans: Record<string, Plan>, recipes: Record<string, Sim
         <DndProvider backend={HTML5Backend}>
             <Table striped bordered hover>
                 <thead>
-                {indexes.map(i => {
-                    const date = addDays(today, i);
-                    const day = format(date, 'EEEE, do')
-                    return <th>{day}</th>
-                })}
+                <tr>
+                    {indexes.map(i => {
+                        const date = addDays(today, i);
+                        const day = format(date, 'EEEE, do')
+                        return <th key={i}>{day}</th>
+                    })}
+                </tr>
                 </thead>
                 <tbody>
                 <tr>
@@ -359,7 +354,8 @@ function Plans(props: { plans: Record<string, Plan>, recipes: Record<string, Sim
                         const date = addDays(today, i);
                         const s = toDayFormat(date);
                         const dayPlans = plansByDate[s] || []
-                        return <DayPlans onDrop={item => handleDrop(item, date)} date={date} i={i} plans={dayPlans} recipes={recipes}/>;
+                        return <DayPlans key={i} onDrop={item => handleDrop(item, date)} date={date} i={i} plans={dayPlans}
+                                         recipes={recipes}/>;
                     })}
                 </tr>
                 </tbody>
