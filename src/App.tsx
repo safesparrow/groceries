@@ -22,7 +22,6 @@ interface SimpleRecipe {
     title: string
     ingredients: string
     recipe: string
-    isPlanned: boolean
 }
 
 interface Plan {
@@ -57,7 +56,6 @@ async function resetTestData() {
             title: 'sałatka z kurczakiem',
             ingredients: 'kurczak, sałata',
             recipe: 'tak robimy sałatkę',
-            isPlanned: false
         };
     const chicken: SimpleRecipe =
         {
@@ -65,7 +63,6 @@ async function resetTestData() {
             title: 'Kurczak w cieście',
             ingredients: 'Kurczak, ciasto francuskie',
             recipe: 'Pieczemy w piekarniku',
-            isPlanned: false
         };
     const pizza: SimpleRecipe =
         {
@@ -73,7 +70,6 @@ async function resetTestData() {
             title: 'Pizza',
             ingredients: 'Mąka, ser żółty, pieczarki, kurczak',
             recipe: 'Pieczemy w piekarniku',
-            isPlanned: false
         }
     await plansRef.set({});
     await recipesRef.set({});
@@ -132,7 +128,6 @@ function RecipeForm(props: { recipe: SimpleRecipe | null, onSubmit: (r: SimpleRe
             title: title,
             ingredients: ingredients,
             recipe: content,
-            isPlanned: recipe ? recipe.isPlanned : false
         }
         e.preventDefault()
         props.onSubmit(r)
@@ -197,13 +192,12 @@ function getHighlightedText(text: string, highlight: string) {
         <span>{part}</span>)} </span>;
 }
 
-function RecipesTable(props: { baseUrl: string, changePlanned: any, handleRemove: any, search: string, recipes: Record<string, SimpleRecipe> }) {
+function RecipesTable(props: { baseUrl: string, handleRemove: any, search: string, recipes: Record<string, SimpleRecipe> }) {
     const {search, recipes} = props;
     const filtered = Object.values(recipes)
         .filter(r => r.title.toLowerCase().includes(search.toLowerCase()));
     filtered.sort((a, b) => {
-        if (a.isPlanned === b.isPlanned) return a.id.localeCompare(b.id);
-        return a.isPlanned ? -1 : 1;
+        return a.id.localeCompare(b.id);
     });
     return <Table striped bordered hover>
         <tbody>
@@ -212,14 +206,6 @@ function RecipesTable(props: { baseUrl: string, changePlanned: any, handleRemove
                 <tr key={recipe.id}>
                     <td>
                         <Link to={`${props.baseUrl}/${recipe.id}`}>{getHighlightedText(recipe.title, search)}</Link>
-                    </td>
-                    <td>
-                        <Form.Group>
-                            <Form.Label>Planned
-                                <Form.Check type='checkbox' checked={recipe.isPlanned}
-                                            onChange={() => props.changePlanned(recipe)}/>
-                            </Form.Label>
-                        </Form.Group>
                     </td>
                     <td><Button variant='outline-warning' onClick={() => props.handleRemove(recipe)}>Remove</Button></td>
                 </tr>)
@@ -360,10 +346,6 @@ function Recipies() {
         setSearch('');
     }
 
-    function changePlanned(recipe: SimpleRecipe) {
-        recipesRef.child(recipe.id).set({...recipe, isPlanned: !recipe.isPlanned})
-    }
-
     return <Switch>
         <Route path={`${path}`} exact>
             <Plans plans={plans} recipes={recipes}/>
@@ -375,8 +357,7 @@ function Recipies() {
                 <Form.Control type='text' placeholder='Search' onChange={handleSearchChange} value={search}/>
             </InputGroup>
             <>
-                {/*<PlannedRecipes recipes={recipes.filter(r => r.ispl)} />*/}
-                <RecipesTable changePlanned={changePlanned} handleRemove={handleRemove} baseUrl={url} search={search}
+                <RecipesTable handleRemove={handleRemove} baseUrl={url} search={search}
                               recipes={recipes}/>
             </>
         </Route>
