@@ -2,7 +2,21 @@ import React, {ChangeEvent, FormEvent, useEffect, useRef, useState} from 'react'
 import {useHistory, Redirect, BrowserRouter, Route, Switch, Link, useParams, useRouteMatch} from 'react-router-dom'
 import './App.css';
 import './Firebase';
-import {Button, Col, Form, InputGroup, Nav, Row, Spinner, Table, Tabs, ToggleButton} from 'react-bootstrap'
+import {
+    Button,
+    Col,
+    Form,
+    InputGroup,
+    Nav,
+    Overlay,
+    OverlayTrigger, Popover,
+    Row,
+    Spinner,
+    Table,
+    Tabs,
+    ToggleButton,
+    Tooltip
+} from 'react-bootstrap'
 import Tab from "react-bootstrap/Tab";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {ProductsManager, IProduct} from "./Products";
@@ -13,6 +27,7 @@ import _ from "lodash";
 import {DndProvider} from 'react-dnd'
 import {useDrag, useDrop} from "react-dnd";
 import {HTML5Backend} from "react-dnd-html5-backend";
+import {X, XSquare} from "react-bootstrap-icons";
 
 /**
  * Basic info about a recipe
@@ -236,6 +251,27 @@ function RecipesTable(props: { baseUrl: string, handleRemove: any, search: strin
         </Table>
  */
 
+function PlanOverlay(props : {onRemove: () => void, plan : Plan, recipes : Record<string, SimpleRecipe>, rest: any}){
+    const {plan, recipes, rest} = props;
+    const recipe = recipes[plan.recipeId]
+    const style = {...rest.style, minWidth: '200px'}
+    return <Popover id='plan-overlay' {...rest} style={style}>
+        <Popover.Title as='h3'>{recipe.title}</Popover.Title>
+        <Popover.Content>
+            <X size={40} onClick={() => props.onRemove()} />
+        </Popover.Content>
+    </Popover>
+}
+
+function F(props : any){
+    return <Popover id='left' {...props} >
+        <Popover.Title as="h3">{`Popover left`}</Popover.Title>
+        <Popover.Content>
+            <strong>Holy guacamole!</strong> Check this info.
+        </Popover.Content>
+    </Popover>
+}
+
 function PlanUI(props: { plan: Plan, recipes: Record<string, SimpleRecipe> }) {
     const ref = useRef(null); // Initialize the reference
     const {plan, recipes} = props;
@@ -249,10 +285,29 @@ function PlanUI(props: { plan: Plan, recipes: Record<string, SimpleRecipe> }) {
         // })
     });
     drag(ref);
+    function handleRemove(plan : Plan){
+        plansRef.child(plan.id).remove()
+    }
     const recipe = recipes[plan.recipeId];
-    return <div ref={ref}>
-        <Link to={`recipes/${recipe.id}`}>{recipe.title}</Link><br/>
-    </div>
+    return <><OverlayTrigger
+        trigger='click'
+        overlay={props => {console.log(props); return <PlanOverlay onRemove={() => handleRemove(plan)} plan={plan} recipes={recipes} rest={props} />; }}
+        placement='bottom'
+        rootClose={true}
+        transition={false}
+    >
+            <div ref={ref} style={{margin: '8px 0px', borderRadius: '.25em', border: '1px solid rgb(26, 189, 214)'}}>
+            {recipe.title}
+            </div>
+        </OverlayTrigger>
+        <OverlayTrigger
+            trigger="click"
+            placement='left'
+            overlay={F}
+        >
+            <Button variant="secondary">Popover on left</Button>
+        </OverlayTrigger>
+        </>
 }
 
 
@@ -263,7 +318,7 @@ function DayPlans(props: { onDrop: (p: any) => void, date: Date, i: number, plan
         drop: props.onDrop
     });
     drop(ref);
-    return <td ref={ref} style={{height: '100%'}}>
+    return <td ref={ref} style={{height: '100%', width: '14.28%'}}>
         {_.sortBy(props.plans, [p => p.dayOrder]).map(plan => <PlanUI recipes={props.recipes} plan={plan}/>)}
     </td>;
 }
@@ -279,12 +334,14 @@ function Plans(props: { plans: Record<string, Plan>, recipes: Record<string, Sim
         const planId = item.id
         const plan = plans[planId]
         let movedDate = toDayFormat(date);
-        const movedPlan : Plan = {
+        const movedPlan: Plan = {
             ...plan,
             date: movedDate
         };
         const dayPlans = [..._.sortBy(plansByDate[toDayFormat(date)], p => p.dayOrder), movedPlan];
-        const updates = Object.fromEntries(dayPlans.map((plan, i) => { return [plan.id, {...plan, dayOrder: i}]; }));
+        const updates = Object.fromEntries(dayPlans.map((plan, i) => {
+            return [plan.id, {...plan, dayOrder: i}];
+        }));
         plansRef.update(updates);
     }
 
@@ -349,6 +406,7 @@ function Recipies() {
     return <Switch>
         <Route path={`${path}`} exact>
             <Plans plans={plans} recipes={recipes}/>
+            <h2>Recipes list</h2>
             <Link to={`${url}/new`}><Button variant={'outline-info'}>Add a recipe</Button></Link>
             <InputGroup>
                 <InputGroup.Prepend>
